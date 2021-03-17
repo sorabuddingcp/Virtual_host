@@ -1,0 +1,247 @@
+Step One — Create the Directory Structure
+sudo mkdir -p /var/www/example.com/public_html
+
+Step Two — Grant Permissions
+sudo chown -R $USER:$USER /var/www/example.com/public_html
+sudo chmod -R 755 /var/www
+
+Step Three — Create Demo Pages for Each Virtual Host
+vim /var/www/example.com/public_html/index.html
+index.html
+<html>
+  <head>
+    <title>Welcome to Example.com!</title>
+  </head>
+  <body>
+    <h1>Success!  The example.com virtual host is working!</h1>
+  </body>
+</html>
+
+Step Four — Create New Virtual Host Files
+sudo cp /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/example.com.conf
+sudo vim /etc/apache2/sites-available/example.com.conf
+ 
+ 
+ 
+<VirtualHost *:7679>
+    ServerAdmin admin@example.com
+    ServerName example.com
+    ServerAlias www.example.com
+    DocumentRoot /var/www/example.com/public_html
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+
+
+Then
+
+In Ubuntu Server, Apache port is defined in /etc/apache2/ports.conf file. So first open the /etc/apache2/ports.conf file using a text editor.
+
+vim /etc/apache2/ports.conf
+
+Listen 7679
+Step Five — Enable the New Virtual Host Files
+sudo a2ensite example.com.conf
+sudo systemctl restart apache2
+ 
+done.
+Step Six — Set Up Local Hosts File (Optional)
+If you are on a Mac or Linux computer, edit your local file with administrative privileges by typing:
+
+sudo vim /etc/hosts
+/etc/hosts
+127.0.0.1   localhost
+127.0.1.1   guest-desktop
+111.111.111.111 example.com
+
+======================================================
+
+If you are on a windows computer, edit your local file with administrative privileges by typing:
+located in administrator cmd
+ C:\Windows\System32\Drivers\etc\ notepad hosts 
+111.111.111.111 example.com
+ 
+Step Seven — Test your Results
+http://example.com:7679
+
+
+working
+ 
+If syntax is ok:
+sudo apache2ctl configtest
+ 
+Will reply with:
+Syntax OK
+-------
+ 
+Configure Apache As A Reverse Proxy Using Mod_proxy On Ubuntu
+
+Requirements
+A server running Ubuntu-/ any Ubuntu 
+A static IP Address for your server
+Install Apache
+Let's start making sure that your Ubuntu-14.04 server is fully up to date. You can update your server by running the following command:
+sudo apt-get update -y
+sudo apt-get upgrade -y
+With the server up to date, you can continue the process and install Apache on your server.
+You can install Apache by simply running the following command:
+sudo apt-get install apache2 -y
+Once Apache has been installed, start the Apache service and configure it to start automatically when the server boots:
+
+sudo /etc/init.d/apache2 start
+sudo update-rc.d apache2 defaults
+
+Install Mod_proxy And Other Modules
+mod_proxy is the Apache module that implements a proxy/gateway for Apache HTTP Server, supporting a number of popular protocols as well as several different load balancing algorithms. It is used to manage connections and redirect them.
+You can install mod_proxy and its dependencies using the following command:
+sudo apt-get install libapache2-mod-proxy-html libxml2-dev -y
+Let's continue with installing the build-essential package for application building. This package can be used to install certain things from source.
+Run the following command to install build-essential package:
+sudo apt-get install -y build-essential
+Configure Apache For Proxy
+Before configuring Apache, you will need to enable some necessary modules.
+Run the following command to get a list of available Apache modules:
+sudo a2enmod
+You should see the list of all the modules:
+Your choices are: access_compat actions alias allowmethods asis auth_basic auth_digest auth_form authn_anon authn_core authn_dbd authn_dbm authn_file authn_socache authnz_ldap authz_core authz_dbd authz_dbm authz_groupfile authz_host authz_owner authz_user autoindex buffer cache cache_disk cache_socache cgi cgid charset_lite data dav dav_fs dav_lock dbd deflate dialup dir dump_io echo env expires ext_filter file_cache filter headers heartbeat heartmonitor include info lbmethod_bybusyness lbmethod_byrequests lbmethod_bytraffic lbmethod_heartbeat ldap log_debug log_forensic lua macro mime mime_magic mpm_event mpm_prefork mpm_worker negotiation php5 proxy proxy_ajp proxy_balancer proxy_connect proxy_express proxy_fcgi proxy_fdpass proxy_ftp proxy_html proxy_http proxy_scgi proxy_wstunnel ratelimit reflector remoteip reqtimeout request rewrite sed session session_cookie session_crypto session_dbd setenvif slotmem_plain slotmem_shm socache_dbm socache_memcache socache_shmcb speling ssl status substitute suexec unique_id userdir usertrack vhost_alias xml2enc
+Which module(s) do you want to enable (wildcards ok)?
+Next, you can run the following commands to enable the modules one by one:
+sudo a2enmod proxy
+sudo a2enmod proxy_http
+sudo a2enmod proxy_ajp
+sudo a2enmod rewrite
+sudo a2enmod deflate
+sudo a2enmod headers
+sudo a2enmod proxy_balancer
+sudo a2enmod proxy_connect
+sudo a2enmod proxy_html
+
+Next, you will need to disable Apache default configuration file 000-default.conf and create a new virtual host file inside the /etc/apache2/sites-available directory to set up "proxying" functionality.
+To disable the 000-default file, run:
+sudo a2dissite 000-default
+Then, create a new virtual host file:
+sudo nano /etc/apache2/sites-available/proxy-host
+Add the following lines to suit your needs:
+<VirtualHost *:80>
+  ServerAdmin webmaster@localhost
+  DocumentRoot /var/www/
+  ErrorLog ${APACHE_LOG_DIR}/error.log
+  CustomLog ${APACHE_LOG_DIR}/access.log combined
+  ProxyPreserveHost On
+  # Servers to proxy the connection, or
+  # List of application servers Usage
+  ProxyPass / http://server-ip-address:8080/
+  ProxyPassReverse / http://server-ip-address:8080/
+  ServerName localhost
+</VirtualHost>
+Save and close the file.
+Enable new virtual host file:
+sudo a2ensite proxy-host
+You will also need to tell Apache to listen on port 8080.
+You can do this by editing the ports.conf file:
+sudo nano /etc/apache2/ports.conf
+Add the following line:
+Listen 8080
+Save the file and restart Apache.
+sudo /etc/init.d/apache2 restart
+Proxying should be working for you now. When you access the URL http://server-ip-address:80 in a browser, it will show the application which is running on http://server-ip-address:8080. The browser is not aware that the application is running on port 8080.
+ 
+Done:---
+ 
+ 
+Enable SSL Reverse-Proxy Support
+If you want to enable SSL support to your Reverse-Proxy connections, then you will need to enable the SSL module first.
+To enable this module, run:
+sudo a2enmod ssl
+After you have enabled SSL, you’ll have to restart the Apache service for the change to be recognized.
+ 
+sudo /etc/init.d/apache2 restart
+Next, you will need to generate self-signed certificate. For testing purposes, you will need to generate a private key (ca.key) with 2048 bit encryption.
+To do this, run:
+sudo openssl genrsa -out ca.key 2048
+Then generate a certificate signing request (ca.csr) using the following command:
+sudo openssl req -nodes -new -key ca.key -out ca.csr
+You should see the following output:
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]:IN
+State or Province Name (full name) [Some-State]:GUJARAT
+Locality Name (eg, city) []:AHMEDABAD
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:ITC
+Organizational Unit Name (eg, section) []:IT
+Common Name (e.g. server FQDN or YOUR name) []:HITESH JETHVA
+Email Address []:
+ 
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:
+An optional company name []:
+Lastly, generate a self-signed certificate (ca.crt) of X509 type valid for 365 keys.
+sudo openssl x509 -req -days 365 -in ca.csr -signkey ca.key -out ca.crt
+Create a directory to place the certificate files we have created.
+sudo mkdir /etc/apache2/ssl
+Next, copy all certificate files to the /etc/apache2/ssl directory.
+sudo cp ca.crt ca.key ca.csr /etc/apache2/ssl/
+Now all the certificates are ready. The next thing to do is to set up the Apache to display the new certificate.
+For this, you need to create new virtual host file proxy-ssl-host.conf
+nano /etc/apache2/sites-available/proxy-ssl-host.conf
+Add the following content:
+
+<VirtualHost *:443>
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+        SSLEngine On
+        # Set the path to SSL certificate
+        # Usage: SSLCertificateFile /path/to/cert.pem
+        SSLCertificateFile /etc/apache2/ssl/ca.crt
+        SSLCertificateKeyFile /etc/apache2/ssl/ca.key
+        ProxyPreserveHost On
+        ProxyPass /var/www/ http://server-ip-address:8080/
+        ProxyPassReverse /var/www/ http://server-ip-address:8080/
+        ServerName localhost
+</VirtualHost>
+
+Save and close the file.
+Enable new virtual host file:
+sudo a2ensite proxy-ssl-host.conf
+Now, restart the Apache service to make this change take effect:
+sudo /etc/init.d/apache2 restart
+That’s it. You can now access your server using the URL https://server-i
+ 
+ 
+ 
+Just add default_  
+ProxyPreserveHost On
+  # Servers to proxy the connection, or
+  # List of application servers Usage
+  ProxyPass / http://server-ip-address:8080/
+  ProxyPassReverse / http://server-ip-address:8080/
+  ServerName localhost
+ 
+virtualhost *:80> 
+      ServerAdmin webmaster@localhost
+     DocumentRoot /var/www/html/ 
+     ErrorLog ${APACHE_LOG_DIR}/error.log 
+     CustomLog ${APACHE_LOG_DIR}/access.log combined
+     ProxyPreserveHost On 
+    # Servers to proxy the connection, or 
+    # List of application servers Usage
+     ProxyPass /app1/ http://10.0.1.7:8080/
+</virtualhost>
+
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
